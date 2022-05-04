@@ -1,16 +1,18 @@
-"""! @brief [description du fichier]
+"""! @brief Librairie personnelle qui a pour but de faciliter la gestion des joueurs et l'utilisation de l'api brawlhalla
  @file player.py
  @section libs Librairies/Modules
   - Requests
+  - Random
 
  @section authors Auteur(s)
   - Créé par Matthias HARTMANN le 31/03/2022 .
 """
 from random import randint, shuffle
-import readline
 import requests
 class Player:
+    #Dictionnaire qui contiendra les joueurs connectés (clé = id discord, valeur = objet Player)
     players = {}
+    #Liste statique des légends du jeu, cette liste est actualisée par l'api brawlhalla
     legends : list = [
             "Bödvar",
             "Cassidy",
@@ -64,140 +66,230 @@ class Player:
             "Reno",
             "Munin",
         ]
-    def __init__(self, name:str):
+
+    def __init__(self, id_discord:str):
         """!
-        @brief [Description de la fonction]
+        @brief Constructeur de l'objet Joueur
 
         Paramètres : 
-            @param self => Blabla
-            @param name : str => [description]
+            @param self => variable représentant l'objet
+            @param id_discord : str => l'id discord qui sera associé à l'objet
 
         """
+        #On initialise la liste de legend du joueur avec une liste vide, cela forcement 
+        #la réatribution d'une nouvelle liste avec l'api(si connecté) avec la liste statique sinon
         self.legends : list = []
-        Player.players[name] = self
-        self.name = name;
+
+        #On ajoute l'objet dans la liste statique de la class
+        Player.players[id_discord] = self
+
+        """
+        On créé des variables d'instance :
+        name représente l'id discord du joueur
+        steam_id représent l'id steam du joueur, initialisé à None par défaut
+        brawlhalla_id représent l'id brawlhalla du joueur, initialisé à None par défaut
+        """
+        self.name = id_discord;
         self.steam_id = None
         self.brawlhalla_id = None
+    
     def setSteamID(self, steamId:str):
+        """!
+        @brief Cette fonction permet de lié un id steam à l'objet joueur. On essaye aussi de recuppérer et lier le brawlhalla_id
+
+        Paramètres : 
+            @param self => variable représentant l'objet
+            @param steamId : str => l'id steam donné par le joueur au bot
+
+        """
         self.steam_id = steamId;
+        #On appelle l'api brawlhalla pour tenter d'obtenir le brawlhalla_id
         self.brawlhalla_id = brawlhallaAPI.getBrawlHallaIDFromSteamID(steamId)
     
     def isConnected(self) -> bool:
-        return self.brawlhalla_id != None
-    def fournish(self):
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction permet de savoir si la liaison avec le brawlhalla est correcte
 
         Paramètres : 
-            @param self => Blabla
+            @param self => variable représentant l'objet
+        Retour de la fonction : 
+            @return bool => Renvoie vrai si le brawlhalla_id est correct Faux sinon
 
         """
-        if(self.brawlhalla_id == None):
+        return self.brawlhalla_id != None
+        
+    def fournish(self):
+        """!
+        @brief Cette fonction à pour but de remplir la liste de legend du joueur
+
+        Paramètres : 
+            @param self => variable représentant l'objet
+
+        """
+        #Si le joueur n'est pas connecté on utilise la liste statique, sinon on utilise l'api pour obtenir la liste de legend du joueur
+        if(not self.isConnected()):
             self.legends : list = Player.legends.copy()
         else:
             self.legends : list = brawlhallaAPI.getLegendOfPlayer(self.brawlhalla_id)
 
-    def random(self):
+    def random(self) -> str:
+        """!
+        @brief Cette fonction permet de tirer aléatoirement une legend dans la liste de legend du joueur
+
+        Paramètres : 
+            @param self => variable représentant l'objet
+        Retour de la fonction : 
+            @return str => le nom d'une legend
+
+        """
+        #On vérifie si la liste est vide, si c'est le cas on la remplie à nouveau.
+        #Cela permet de ne pas tirer plusieurs fois d'affilé la même legend
         if(len(self.legends) == 0): self.fournish()
         i : int = randint(0, len(self.legends)-1)
         return self.legends.pop(i)
     
-    def reste(self):
+    def rest(self) -> str:
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction renvoie la liste de legend sous forme de 2 colonnes.
+        TODO:
+            Changer l'affichage 
 
         Paramètres : 
-            @param self => Blabla
+            @param self => variable représentant l'objet
+        Retour de la fonction : 
+            @return str => La liste sous forme de 2 colonne (une seule chaine de caractère)
 
         """
         names = "\n"
+        #On trie la liste de legend de façon à l'avoir par ordre alphabétique
+        self.legends.sort()
+
+        #On recuppère les legends deux à deux et on les mets en forme
         for i in range(1, len(self.legends)-1, 2):
             names += f' - {self.legends[i-1]}    {" - " + self.legends[i]}\n'
+        #Dans le cas ou la liste est impaire
         if(len(self.legends) % 2 != 0):
             names += f' - {self.legends[-1]}\n'
 
         return names.replace("_"," ")
 
     def __str__(self) -> str:
-        return f"({self.name})->[steam:{self.steam_id}, brawlhalla:{self.brawlhalla_id}]"
-    def __repr__(self) -> str:
-        return f"({self.name})->[steam:{self.steam_id}, brawlhalla:{self.brawlhalla_id}]"
-
-    @staticmethod
-    def get(name):
         """!
-        @brief [Description de la fonction]
+        @brief Gestion de l'affichage de l'objet dans un print DEBUG ONLY
 
         Paramètres : 
-            @param name => [description]
+            @param self => variable représentant l'objet
+        Retour de la fonction : 
+            @return str => la représentation de l'objet
+
+        """
+        return f"({self.name})->[steam:{self.steam_id}, brawlhalla:{self.brawlhalla_id}]"
+    def __repr__(self) -> str:
+        """!
+        @brief Gestion de l'affichage de l'objet dans un print DEBUG ONLY
+
+        Paramètres : 
+            @param self => variable représentant l'objet
+        Retour de la fonction : 
+            @return str => la représentation de l'objet
+
+        """
+        return self.__str__()
+
+    @staticmethod
+    def get(name: str) -> object or None:
+        """!
+        @brief Cette fonction statique permet de récuppérer un joueur à partir de son id discord
+
+        Paramètres : 
+            @param name : str => chaine de caractère représentant l'id_discord
+        Retour de la fonction : 
+            @return Player or None => l'objet joueur associé ou None
 
         """
         return Player.players.get(name, None)
 
     @staticmethod
-    def weapon():
+    def weapon() -> str:
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction permet de tirer aléatoirement un challenge (ne pouvoir utiliser que certaines armes)
 
+        Retour de la fonction : 
+            @return str => le type d'arme que le joueur pourra utiliser
 
         """
         weapons = ["principale", "secondaire", "aucune", "objets", "tous"]
         return weapons[randint(0, len(weapons)-1)]
 
 class Team:
-    def __init__(self, color):
+    def __init__(self, color: str):
         """!
-        @brief [Description de la fonction]
+        @brief Constructeur de l'objet team
 
         Paramètres : 
-            @param self => Blabla
-            @param color => [description]
+            @param self => variable représentant l'objet
+            @param color : str => la couleur de l'équipe (bleu, rouge ou Waiter(team d'attente))
 
         """
         self.color = color
         self.players = []
-    def add(self, player):
-        self.players.append(player)
-    def remove(self, player):
+        
+    def add(self, player : Player):
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction permet d'ajouter un joueur dans l'équipe
 
         Paramètres : 
-            @param self => Blabla
-            @param player => [description]
+            @param self => variable représentant l'objet
+            @param player : Player => un objet Joueur
+
+        """
+        self.players.append(player)
+    def remove(self, player : Player):
+        """!
+        @brief Cette fonction permet de supprimer un joueur de l'équipe
+
+        Paramètres : 
+            @param self => variable représentant l'objet
+            @param player : Player => un objet joueur
 
         """
         if(player in self.players):
             self.players.remove(player)
     def melange(self):
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction permet de mélanger les joueurs à l'intérieur d'une équipe (par la team Waiter)
 
         Paramètres : 
-            @param self => Blabla
+            @param self => variable représentant l'objet
 
         """
         shuffle(self.players)
-    def __len__(self):
+    def __len__(self) -> int:
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction permet de facilement avoir la taille de l'équipe (= taille de la liste de joueurs)
 
         Paramètres : 
-            @param self => Blabla
+            @param self => variable représentant l'objet
+        Retour de la fonction : 
+            @return int => la taille de l'équipe
 
         """
         return len(self.players)
 
+    #La réaction utilisé par le bot pour ajouter une personne dans la team waiter
     teamReaction = ""
+    #Initialisation des teams (variables statiques)
     teamRed = None
     teamBlue = None
     teamWaiter = None
 
     @staticmethod
-    def participants():
+    def participants()-> list:
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction permet de connaitres les joueurs en attente
 
+        Retour de la fonction : 
+            @return list => liste des joueurs en attente
 
         """
         if(len(Team.teamWaiter)>0):
@@ -207,7 +299,7 @@ class Team:
     @staticmethod
     def init():
         """!
-        @brief [Description de la fonction]
+        @brief Cette fonction génère les 3 teams (rouge, bleu, waiter)
 
 
         """
@@ -217,9 +309,8 @@ class Team:
     @staticmethod
     def selection():
         """!
-        @brief [Description de la fonction]
-
-
+        @brief Cette fonction permet mettre les joueurs en attente dans les teams red et blue aléatoirement
+        
         """
         Team.teamWaiter.melange()
         players = Team.teamWaiter.players
@@ -232,27 +323,65 @@ class Team:
 
 
 class brawlhallaAPI:
-    apikey = "";
+    api_key = "";
+    
     @staticmethod
     def getBrawlHallaIDFromSteamID(steamID : str ) -> None or int:
+        """!
+        @brief Cette fonction permet d'obtenir le brawlhalla id d'un joueur à partir de son steam id
+
+        Paramètres : 
+            @param steamID : str => identifiant steam (disponible dans les paramètres du compte steam)
+        Retour de la fonction : 
+            @return None or int => Le brawlhalla id ou None si la requête échoue
+
+        """
         reponse = requests.get(f"https://api.brawlhalla.com/search?steamid={steamID}&api_key={brawlhallaAPI.api_key}")
         if(reponse.status_code == 200):
-            return reponse.json()["brawlhalla_id"]
+            return reponse.json().get("brawlhalla_id", None)
         return None
+        
     @staticmethod
-    def getPlayerStats(brawlhalla_id : int) -> dict() or None:
+    def getPlayerStats(brawlhalla_id : int) -> dict or None:
+        """!
+        @brief Cette fonction permet de récuppérer les statistiques d'un joueur à partir de son brawlhalla id
+
+        Paramètres : 
+            @param brawlhalla_id : int => le brawlhalla id d'un joueur
+        Retour de la fonction : 
+            @return dict or None => un json représentant les statistiques du joueur
+
+        """
         reponse = requests.get(f"https://api.brawlhalla.com/player/{brawlhalla_id}/stats?&api_key={brawlhallaAPI.api_key}")
         if(reponse.status_code == 200):
             return reponse.json()
         return None
+
     @staticmethod
     def getPlayerRanked(brawlhalla_id : int) -> dict or None:
+        """!
+        @brief Cette fonction permet de récuppérer les statistiques de Ranked d'un joueur à partir de son brawlhalla id
+
+        Paramètres : 
+            @param brawlhalla_id : int => le brawlhalla id d'un joueur
+        Retour de la fonction : 
+            @return dict or None => un json représentant les statistiques ranked du joueur
+
+        """
         reponse = requests.get(f"https://api.brawlhalla.com/player/{brawlhalla_id}/ranked?&api_key={brawlhallaAPI.api_key}")
         if(reponse.status_code == 200):
             return reponse.json()
         return None
+
     @staticmethod
     def getAllLegends() -> list:
+        """!
+        @brief Cette fonction permet d'obtenir la liste de toutes les legends du jeu
+
+        Retour de la fonction : 
+            @return list => la liste des noms des légends
+
+        """
         reponse = requests.get(f"https://api.brawlhalla.com/legend/all/&api_key={brawlhallaAPI.api_key}")
         if(reponse.status_code == 200):
             json = reponse.json();
@@ -261,8 +390,18 @@ class brawlhallaAPI:
                 liste.append(legend["legend_name_key"])
             return liste
         return None
+
     @staticmethod
     def getLegendOfPlayer(brawlhalla_id) -> None or list:
+        """!
+        @brief Cette fonction permet d'obtenir la liste des legends qu'un joueur possède
+
+        Paramètres : 
+            @param brawlhalla_id => le brawlhalla id d'un joueur
+        Retour de la fonction : 
+            @return None or list => la liste des legends qu'il possède
+
+        """
         stats = brawlhallaAPI.getPlayerStats(brawlhalla_id)
         if(stats == None):
             return None
@@ -271,4 +410,7 @@ class brawlhallaAPI:
         for l in legends:
             liste.append(l["legend_name_key"])
         return liste
-    #Faire requetes clan
+    """
+    TODO:
+        Faire les requêtes pour les clans
+    """
