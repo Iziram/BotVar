@@ -234,10 +234,6 @@ class Team:
 class brawlhallaAPI:
     apikey = "";
     @staticmethod
-    def useAPIKEY():
-        with open('./apikey.txt', 'r') as f:
-            brawlhallaAPI.apikey = f.readline();
-    @staticmethod
     def getBrawlHallaIDFromSteamID(steamID : str ) -> None or int:
         reponse = requests.get(f"https://api.brawlhalla.com/search?steamid={steamID}&api_key={brawlhallaAPI.api_key}")
         if(reponse.status_code == 200):

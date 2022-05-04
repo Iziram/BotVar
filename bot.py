@@ -11,7 +11,11 @@ from player import Player, Team, brawlhallaAPI
 from json import dump
 import os
 
-token : str = "OTQxMjUxMjM1OTA0ODg0NzY2.YgTOhg.Diz6Jq73MVjzuGJpv3PQrpp9UeA"
+token : str = ""
+with open('./apikey.txt', 'r') as f:
+    tokens : list = f.readline().split(" ")
+    brawlhallaAPI.apikey = tokens[0];
+    token = tokens[1]
 
 
 
@@ -148,6 +152,5 @@ async def on_raw_reaction_remove(payload):
         user = await client.fetch_user(payload.user_id)
         await client.get_channel(payload.channel_id).send(f'{user.name} a quitté la partie.')
 
-brawlhallaAPI.useAPIKEY()
 Player.legends = brawlhallaAPI.getAllLegends()
 client.run(token)
