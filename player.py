@@ -7,6 +7,7 @@
  @section authors Auteur(s)
   - Créé par Matthias HARTMANN le 31/03/2022 .
 """
+from os import stat
 from random import randint, shuffle
 import requests
 class Player:
@@ -195,6 +196,75 @@ class Player:
 
         """
         return self.__str__()
+    
+    @staticmethod
+    def statisticsFormatter(stats : dict, type_ : str = "stat") -> dict:
+        formatted_stats : dict = {
+            "player":{},
+            "legends":[]
+        }
+        if(type_ == "stat"):
+            formatted_stats["player"] = {
+                "name" : stats["name"],
+                "level" : stats["level"],
+                "games" : {
+                    "total" : stats["games"],
+                    "wins" : stats["wins"]
+                },
+                # "clan" : {
+                #     "name" : stats["clan"]["clan_name"],
+                #     "xp" : {
+                #         "total" : stats["clan"]["clan_xp"],
+                #         "personnal" : stats["clan"]["personnal_xp"],
+                #     }
+                # }
+            }
+
+            for legend in stats["legends"]:
+                legend_json = {
+                    "name" : legend["legend_name_key"],
+                    "kos" : legend["kos"],
+                    "games" : {
+                        "total" : legend["games"],
+                        "wins" : legend["wins"],
+                    }
+                }
+                formatted_stats["legends"].append(legend_json)
+            formatted_stats["legends"].sort(key=lambda x: x["name"])
+
+        elif(type_ == "ranked"):
+            formatted_stats["player"] = {
+                "name" : stats["name"],
+                "rating" : {
+                    "current" : stats["rating"],
+                    "peak" : stats["peak_rating"],
+                    "tier" : stats["tier"]
+                },
+                "games" : {
+                        "total" : stats["games"],
+                        "wins" : stats["wins"],
+                }
+               
+            }
+            for legend in stats["legends"]:
+                legend_json = {
+                    "name" : legend["legend_name_key"],
+                    "rating" : {
+                        "current" : legend["rating"],
+                        "peak" : legend["peak_rating"],
+                        "tier" : legend["tier"]
+                    },
+                    "games" : {
+                        "total" : legend["games"],
+                        "wins" : legend["wins"],
+                    }
+                }
+                formatted_stats["legends"].append(legend_json)
+            formatted_stats["legends"].sort(key= lambda x: x["rating"]["peak"], reverse=True)
+
+        return formatted_stats
+
+
 
     @staticmethod
     def get(name: str) -> object or None:

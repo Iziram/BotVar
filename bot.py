@@ -9,6 +9,7 @@
   - Créé par Matthias HARTMANN le 31/03/2022 .
 """
 import discord as dis
+from numpy import full
 from player import Player, Team, brawlhallaAPI
 from json import dump
 import os
@@ -31,6 +32,23 @@ client = dis.Client()
 
 #On initialise la gestion des Teams (afin de pouvoir l'utiliser avec le bot)
 Team.init()
+
+def embedGenerator(title:str, 
+    message:str,
+    auteur:dis.user = None, 
+    color:int = 0xde64d4):
+
+    embed : dis.embeds = dis.Embed(
+        title = title,
+        description = message,
+        color = color
+    )
+    if(auteur != None):
+        embed.set_author(
+            name=auteur.name,
+            icon_url=auteur.avatar_url
+        )
+    return embed
 
 async def userIdToNames(users : list) -> list:
     """!
@@ -130,7 +148,6 @@ async def on_message(message : dis.Message):
 
             """
             TODO:
-                Afficher les statistiques d'une autre façon
                 Envoyer les statistiques en message privé
             """
 
@@ -143,8 +160,8 @@ async def on_message(message : dis.Message):
                     player = Player(author.id)
                 if(player != None and player.isConnected()):
                     with open('./stats.json', 'w') as f:
-                        dump(brawlhallaAPI.getPlayerStats(player.brawlhalla_id), f)
-                    await message.channel.send("Voici vos statistiques", file=dis.File(r'./stats.json'))
+                        dump(Player.statisticsFormatter(brawlhallaAPI.getPlayerStats(player.brawlhalla_id)), f)
+                    await message.channel.send("Voici vos statistiques (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)", file=dis.File(r'./stats.json'))
                     os.remove("./stats.json")
                 else:
                     await message.channel.send("Votre compte steam n'a pas été relié. Vous ne pouvez donc pas obtenir vos statistiques")
@@ -158,8 +175,8 @@ async def on_message(message : dis.Message):
                     player = Player(author.id)
                 if(player != None and player.isConnected()):
                     with open('./ranked.json', 'w') as f:
-                        dump(brawlhallaAPI.getPlayerRanked(player.brawlhalla_id), f)
-                    await message.channel.send("Voici vos statistiques", file=dis.File(r'./ranked.json'))
+                        dump(Player.statisticsFormatter(brawlhallaAPI.getPlayerRanked(player.brawlhalla_id), "ranked"), f)
+                    await message.channel.send("Voici vos statistiques de ranked (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)", file=dis.File(r'./ranked.json'))
                     os.remove("./ranked.json")
                 else:
                     await message.channel.send("Votre compte steam n'a pas été relié. Vous ne pouvez donc pas obtenir vos statistiques")
@@ -167,30 +184,59 @@ async def on_message(message : dis.Message):
 
     #Si la commande concerne les teams
     elif command == "teams":
+        if "jirobot" not in [a.name.lower() for a in author.roles]:
+            await message.channel.send("Vous n'avez pas la permission d'utiliser cette commande.")
+            return
         if len(full_command) > 2:
             #Pour créer une nouvelle partie
+            channel = message.channel
             if full_command[2] == "new":
-                channel = message.channel
-                answer = await channel.send(f'Veuillez cliquer sur la reaction pour participer.')
+                code : str = ""
+                if(len(full_command) > 3):
+                    code = "RoomCode : " + full_command[3]
+                answer = await channel.send(embed=embedGenerator(
+                    "Une nouvelle partie a été lancée",
+                    f"Veuillez cliquer sur la réaction pour rejoindre la partie. {code}",
+                    author
+                ))
                 await answer.add_reaction("🕹")
                 Team.teamReaction = answer.id
+
+
             #Pour lister les participants en attente de la partie
             elif full_command[2] == "list":
                 p = Team.participants()
                 names = await userIdToNames(p)
-                await message.channel.send(f"Les participants sont: \n{names}")
+                await channel.send(embed=embedGenerator(
+                    "Les participants",
+                    f"{names}",
+                    author
+                ))
             #Pour selectionner les équipes aléatoires
             elif full_command[2] == "select":
                 Team.selection()
                 Rednames = await userIdToNames(Team.teamRed.players)
-                await message.channel.send(f"Les Rouges sont: \n{Rednames}")
-
                 BlueNames = await userIdToNames(Team.teamBlue.players)
-                await message.channel.send(f"Les Bleus sont: \n{BlueNames}")
+
+                await channel.send(embed=embedGenerator(
+                    "Les Rouges sont : ",
+                    f"{Rednames}",
+                    author
+                ))
+                await channel.send(embed=embedGenerator(
+                    "Les Bleus sont : ",
+                    f"{BlueNames}",
+                    author
+                ))
+
             #Pour remettre à 0 la partie
             elif full_command[2] == "reset":
                 Team.init()
-                await message.channel.send(f"La préparation des teams a été réinitialisée.")
+                await channel.send(embed=embedGenerator(
+                    "La partie a été réinitialisée",
+                    "",
+                    author
+                ))
             await message.delete()
     #Pour afficher la liste de commande et comment les utiliser
     elif command == "help":
@@ -213,7 +259,6 @@ async def on_reaction_add(reaction: dis.reaction, user:dis.user):
     """
     if not user.bot and reaction.message.id == Team.teamReaction:
         Team.teamWaiter.add(user.id)
-        await reaction.message.channel.send(f'{user.name} a rejoint la partie.')
 
 @client.event
 async def on_raw_reaction_remove(payload : dis.raw_models.RawReactionActionEvent):
@@ -227,7 +272,9 @@ async def on_raw_reaction_remove(payload : dis.raw_models.RawReactionActionEvent
     if payload.message_id == Team.teamReaction:
         Team.teamWaiter.remove(payload.user_id)
         user = await client.fetch_user(payload.user_id)
-        await client.get_channel(payload.channel_id).send(f'{user.name} a quitté la partie.')
+
+
+
 
 #Au lancement du bot on met à jour la liste statiques des legends
 Player.legends = brawlhallaAPI.getAllLegends()
