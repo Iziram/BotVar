@@ -265,7 +265,6 @@ class Player:
         return formatted_stats
 
 
-
     @staticmethod
     def get(name: str) -> object or None:
         """!
@@ -462,12 +461,12 @@ class brawlhallaAPI:
         return None
 
     @staticmethod
-    def getLegendOfPlayer(brawlhalla_id) -> None or list:
+    def getLegendOfPlayer(brawlhalla_id : str) -> None or list:
         """!
         @brief Cette fonction permet d'obtenir la liste des legends qu'un joueur possède
 
         Paramètres : 
-            @param brawlhalla_id => le brawlhalla id d'un joueur
+            @param brawlhalla_id : str => le brawlhalla id d'un joueur
         Retour de la fonction : 
             @return None or list => la liste des legends qu'il possède
 
@@ -480,7 +479,11 @@ class brawlhallaAPI:
         for l in legends:
             liste.append(l["legend_name_key"])
         return liste
-    """
-    TODO:
-        Faire les requêtes pour les clans
-    """
+    
+    @staticmethod
+    def getClan(clan_id : str)-> None or dict:
+        reponse = requests.get(f"https://api.brawlhalla.com/clan/{clan_id}/?&api_key={brawlhallaAPI.api_key}")
+        if(reponse.status_code == 200):
+            return reponse.json()
+        return None
+    

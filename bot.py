@@ -9,7 +9,7 @@
   - Créé par Matthias HARTMANN le 31/03/2022 .
 """
 import discord as dis
-from numpy import full
+from numpy import isin
 from player import Player, Team, brawlhallaAPI
 from json import dump
 import os
@@ -36,7 +36,7 @@ Team.init()
 def embedGenerator(title:str, 
     message:str,
     auteur:dis.user = None, 
-    color:int = 0xde64d4):
+    color:int = 0xde64d4) -> dis.embeds:
 
     embed : dis.embeds = dis.Embed(
         title = title,
@@ -80,7 +80,7 @@ async def on_message(message : dis.Message):
     full_command = [i.lower() for i in message.content.split(" ")]
 
     #On vérifie si le message commence par "!b"  et qu'il possède au moins deux mots sinon on ne traite pas le message.
-    if(full_command[0] != "!b" or len(full_command) < 2):
+    if(full_command[0] != "!b" or len(full_command) < 2 or isinstance(message.channel, dis.DMChannel)):
         return
     
     #On récuppère l'auteur du message
@@ -106,7 +106,7 @@ async def on_message(message : dis.Message):
                     player = Player(author.id)
                 legend = player.random()
                 
-                await message.channel.send(f"Utilise : {legend}")
+                await message.author.send(f"Utilise : {legend}")
 
             #Si c'est list alors on affiche la liste des legends qu'il reste
             elif full_command[2] == "list":
@@ -117,12 +117,21 @@ async def on_message(message : dis.Message):
                     player = Player(author.id)
                 legend = player.rest()
                 
-                await message.channel.send(f"Tu n'as pas encore utilisé les legendes suivantes: {legend}({len(player.legends)})")
+                await message.author.send(embed=embedGenerator(
+                        "Succès",
+                        f"Tu n'as pas encore utilisé les legendes suivantes: {legend}({len(player.legends)})",
+                        auteur=author,
+                        color=0x54c759
+                ))
             
             #Si c'est weapon alors on affiche un challenge aléatoire
             elif full_command[2] == "weapon":
-                author = message.author
-                await message.channel.send(f"Arme(s) à utiliser : {Player.weapon()}")
+                await message.author.send(embed=embedGenerator(
+                        "Succès",
+                        f"Arme(s) à utiliser : {Player.weapon()}",
+                        auteur=author,
+                        color=0x54c759
+                ))
 
             await message.delete()
     #Le cas où la commande concerne le joueur et ses statistiques 
@@ -137,19 +146,24 @@ async def on_message(message : dis.Message):
                     player = Player(author.id)
                 player.setSteamID(full_command[3])
                 
-                if(player.brawlhalla_id != None):
-                    await message.channel.send(f"Votre compte steam a bien été lié.")
+                if(player.isConnected()):
+                    await message.author.send(embed=embedGenerator(
+                        "Succès",
+                        "Votre compte steam a bien été relié.",
+                        auteur=author,
+                        color=0x54c759
+                    ))
                 else:
-                    await message.channel.send(f"Votre compte steam n'a pas pu être lié.")
+                    await message.author.send(embed=embedGenerator(
+                        "Erreur",
+                        "Votre compte steam n'a pas pu être relié.",
+                        auteur=author,
+                        color=0xf04646
+                    ))
 
                 await message.delete()
 
         elif len(full_command) > 2:
-
-            """
-            TODO:
-                Envoyer les statistiques en message privé
-            """
 
             #Dans le cas des statistiques basiques du joueur
             if(full_command[2] == "stats"):
@@ -161,13 +175,23 @@ async def on_message(message : dis.Message):
                 if(player != None and player.isConnected()):
                     with open('./stats.json', 'w') as f:
                         dump(Player.statisticsFormatter(brawlhallaAPI.getPlayerStats(player.brawlhalla_id)), f)
-                    await message.channel.send("Voici vos statistiques (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)", file=dis.File(r'./stats.json'))
+                    await message.author.send(embed=embedGenerator(
+                        "Succès",
+                        "Voici vos statistiques (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)",
+                        auteur=author,
+                        color=0x54c759
+                    ), file=dis.File(r'./stats.json'))
                     os.remove("./stats.json")
                 else:
-                    await message.channel.send("Votre compte steam n'a pas été relié. Vous ne pouvez donc pas obtenir vos statistiques")
+                    await message.author.send(embed=embedGenerator(
+                        "Erreur",
+                        "Votre compte steam n'a pas été relié, vous ne pouvez pas accédez à vos données brawlhalla",
+                        auteur=author,
+                        color=0xf04646
+                    ))
 
             #Dans le cas des statistiques de Ranked du joueur
-            if(full_command[2] == "ranked"):
+            elif(full_command[2] == "ranked"):
                 player : Player or None = None
                 if author.id in Player.players:
                     player = Player.get(author.id)
@@ -176,16 +200,64 @@ async def on_message(message : dis.Message):
                 if(player != None and player.isConnected()):
                     with open('./ranked.json', 'w') as f:
                         dump(Player.statisticsFormatter(brawlhallaAPI.getPlayerRanked(player.brawlhalla_id), "ranked"), f)
-                    await message.channel.send("Voici vos statistiques de ranked (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)", file=dis.File(r'./ranked.json'))
+                    await message.author.send(embed=embedGenerator(
+                        "Succès",
+                        "Voici vos statistiques de ranked (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)",
+                        auteur=author,
+                        color=0x54c759
+                    ), file=dis.File(r'./ranked.json'))
                     os.remove("./ranked.json")
                 else:
-                    await message.channel.send("Votre compte steam n'a pas été relié. Vous ne pouvez donc pas obtenir vos statistiques")
-        
+                    await message.author.send(embed=embedGenerator(
+                        "Erreur",
+                        "Votre compte steam n'a pas été relié, vous ne pouvez pas accédez à vos données brawlhalla",
+                        auteur=author,
+                        color=0xf04646
+                    ))
+            
+            elif (full_command[2] == "clan"):
+                if author.id in Player.players:
+                    player = Player.get(author.id)
+                else:
+                    player = Player(author.id)
+                if(player != None and player.isConnected()):
+                    stats = brawlhallaAPI.getPlayerStats(player.brawlhalla_id)
+                    if("clan" in stats.keys()):
+                        with open('./clan.json', 'w') as f:
+                            dump(brawlhallaAPI.getClan(stats["clan"]["clan_id"]), f)
+                        await message.author.send(embed=embedGenerator(
+                            "Succès",
+                            "Voici les statistiques de votre clan (ouvrez le fichier avec votre navigateur internet pour avoir une version lisible)",
+                            auteur=author,
+                            color=0x54c759
+                        ), file=dis.File(r'./clan.json'))
+                        os.remove("./clan.json")
+                    else:
+                        await message.author.send(embed=embedGenerator(
+                            "Erreur",
+                            "Vous n'avez pas de clan.",
+                            auteur=author,
+                            color=0xf04646
+                        ))
+                    
+                else:
+                    await message.author.send(embed=embedGenerator(
+                        "Erreur",
+                        "Votre compte steam n'a pas été relié, vous ne pouvez pas accédez à vos données brawlhalla",
+                        auteur=author,
+                        color=0xf04646
+                    ))
+            await message.delete()
 
     #Si la commande concerne les teams
     elif command == "teams":
         if "jirobot" not in [a.name.lower() for a in author.roles]:
-            await message.channel.send("Vous n'avez pas la permission d'utiliser cette commande.")
+            await message.author.send(embed=embedGenerator(
+                "Erreur",
+                "Vous n'avez pas la permission d'utiliser cette commande.",
+                auteur=author,
+                color=0xf04646
+            ))
             return
         if len(full_command) > 2:
             #Pour créer une nouvelle partie
@@ -240,12 +312,78 @@ async def on_message(message : dis.Message):
             await message.delete()
     #Pour afficher la liste de commande et comment les utiliser
     elif command == "help":
-        """
-        TODO:
-            Afficher la liste des commandes
-            Afficher l'utilisation des commandes
-        """
-        pass
+        if (len(full_command) < 3):
+            commandes = """
+            !b help ➡ affiche la liste des commandes
+            !b legend ➡ commandes relatives aux legendes
+            !b player ➡ commandes relatives aux joueurs 
+            !b teams ➡ commandes relatives aux parties
+
+            Pour plus d'informations sur une commande :
+            !b help <commande>
+            """
+            await message.author.send(embed=embedGenerator(
+                "Liste des commandes",
+                commandes,
+                auteur=author,
+                color=0x54c759
+            ))
+        elif (len(full_command) < 4):
+            if(full_command[2] == "legend"):
+                commandes = """
+                !b legend list ➡ Affiche la liste des legendes que vous n'avez pas encore utilisé
+                !b legend rdm ➡ Tire aléatoirement une legende
+                !b legend weapon ➡ Tire aléatoirement un challenge d'armes (restriction des armes à utiliser)
+                """
+
+                await message.author.send(embed=embedGenerator(
+                    "Liste des commandes liées aux Legendes",
+                    commandes,
+                    auteur=author,
+                    color=0x54c759
+                ))
+            elif(full_command[2] == "player"):
+                commandes = """
+                !b player steam <steam_id> ➡ Lie votre compte discord à votre compte steam
+                !b player stats ➡ Affiche vos statistiques brawhalla
+                !b player ranked ➡ Affiche vos statistiques ranked brawlhalla
+                !b player clan ➡ Affiche des informations sur votre clan brawlhalla
+                """
+
+                await message.author.send(embed=embedGenerator(
+                    "Liste des commandes liées aux Joueurs",
+                    commandes,
+                    auteur=author,
+                    color=0x54c759
+                ))
+
+            elif(full_command[2] == "teams"):
+                commandes = """
+                *Seuls les membres ayant le role JiroBot pourront utiliser ces commandes*
+
+                !b teams new [Roomcode] ➡ génère une nouvelle partie brawlhalla le roomcode n'est pas obligatoire
+                !b teams list ➡ Affiche la liste des participants à la partie
+                !b teams select ➡ Selectionne les équipes aléatoirement
+                !b teams reset ➡ Réinitialise la partie
+                """
+
+                await message.author.send(embed=embedGenerator(
+                    "Liste des commandes liées aux Parties",
+                    commandes,
+                    auteur=author,
+                    color=0x54c759
+                ))
+
+
+        await message.delete()
+    else:
+        await message.author.send(embed=embedGenerator(
+            "Erreur",
+            f"La commande '{command}' n'existe pas. Faites !b help pour avoir la liste des commandes",
+            auteur=author,
+            color=0xf04646
+        ))
+        await message.delete()
 
 @client.event
 async def on_reaction_add(reaction: dis.reaction, user:dis.user):
@@ -271,7 +409,6 @@ async def on_raw_reaction_remove(payload : dis.raw_models.RawReactionActionEvent
     """
     if payload.message_id == Team.teamReaction:
         Team.teamWaiter.remove(payload.user_id)
-        user = await client.fetch_user(payload.user_id)
 
 
 
