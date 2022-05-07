@@ -7,8 +7,9 @@
  @section authors Auteur(s)
   - Créé par Matthias HARTMANN le 31/03/2022 .
 """
-from os import stat
 from random import randint, shuffle
+from json import load
+import os
 import requests
 class Player:
     #Dictionnaire qui contiendra les joueurs connectés (clé = id discord, valeur = objet Player)
@@ -82,7 +83,8 @@ class Player:
         self.legends : list = []
 
         #On ajoute l'objet dans la liste statique de la class
-        Player.players[id_discord] = self
+        if(id_discord not in Player.players):
+            Player.players[id_discord] = self
 
         """
         On créé des variables d'instance :
@@ -174,6 +176,15 @@ class Player:
 
         return names.replace("_"," ")
 
+    def toJson(self)-> dict:
+        return {
+            "name" : self.name,
+            "steam" : self.steam_id,
+            "brawlhalla" : self.brawlhalla_id,
+            "legends" : self.legends
+        }
+    
+
     def __str__(self) -> str:
         """!
         @brief Gestion de l'affichage de l'objet dans un print DEBUG ONLY
@@ -196,6 +207,24 @@ class Player:
 
         """
         return self.__str__()
+    
+    @staticmethod
+    def fromJson(json : dict)->object:
+        player = Player(json["name"])
+        player.brawlhalla_id = json["brawlhalla"]
+        player.steam_id = json["steam"]
+        player.legends = json["legends"]
+    
+    @staticmethod
+    def loadFromSave():
+        if(os.path.exists('./save.json')):
+            with open('./save.json') as f:
+                json = load(f)
+                for p in json:
+                    player = Player(p["name"])
+                    player.brawlhalla_id = p["brawlhalla"]
+                    player.steam_id = p["steam"]
+                    player.legends = p["legends"]
     
     @staticmethod
     def statisticsFormatter(stats : dict, type_ : str = "stat") -> dict:

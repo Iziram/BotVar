@@ -9,9 +9,10 @@
   - Créé par Matthias HARTMANN le 31/03/2022 .
 """
 import discord as dis
-from numpy import isin
 from player import Player, Team, brawlhallaAPI
 from json import dump
+from threading import Thread
+from time import sleep
 import os
 
 
@@ -37,6 +38,18 @@ def embedGenerator(title:str,
     message:str,
     auteur:dis.user = None, 
     color:int = 0xde64d4) -> dis.embeds:
+    """!
+    @brief Cette fonction génère des embed discord
+
+    Paramètres : 
+        @param title : str => Titre du embed
+        @param message : str => Message du embed
+        @param auteur : dis.user = None => l'auteur
+        @param color : int = 0xde64d4 => la couleur
+    Retour de la fonction : 
+        @return dis.embeds => l'embed
+
+    """
 
     embed : dis.embeds = dis.Embed(
         title = title,
@@ -49,6 +62,14 @@ def embedGenerator(title:str,
             icon_url=auteur.avatar_url
         )
     return embed
+
+def playerSaver(_):
+    while True:
+        sleep(60)
+        if(os.path.exists('./save.json')):
+            os.remove('./save.json')
+        with open("./save.json", 'w') as f:
+            dump([p.toJson() for p in Player.players.values()], f)
 
 async def userIdToNames(users : list) -> list:
     """!
@@ -411,9 +432,10 @@ async def on_raw_reaction_remove(payload : dis.raw_models.RawReactionActionEvent
         Team.teamWaiter.remove(payload.user_id)
 
 
-
-
+thread = Thread(target=playerSaver, args=(1,))
+thread.start()
 #Au lancement du bot on met à jour la liste statiques des legends
+Player.loadFromSave()
 Player.legends = brawlhallaAPI.getAllLegends()
 
 #On lance le bot
