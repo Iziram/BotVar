@@ -65,7 +65,7 @@ def embedGenerator(title:str,
 
 def playerSaver(_):
     while True:
-        sleep(60)
+        sleep(30)
         if(os.path.exists('./save.json')):
             os.remove('./save.json')
         with open("./save.json", 'w') as f:
