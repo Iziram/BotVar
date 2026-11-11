@@ -1,0 +1,24 @@
+[project]
+name = "botvar"
+version = "0.1.0"
+description = "Bot Discord pour le serveur communautaire BrawlHalla : statistiques de joueurs, organisation de parties et plus encore."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Matthias HARTMANN" },
+]
+dependencies = [
+    "discord.py>=2.0",
+    "requests>=2.31",
+]
+
+[project.scripts]
+botvar = "botvar.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["botvar*"]
