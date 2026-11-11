@@ -109,7 +109,7 @@ class Player:
         """Renvoie les legends restantes formatées en 2 colonnes."""
         names = "\n"
         self.legends.sort()
-        for i in range(1, len(self.legends) - 1, 2):
+        for i in range(1, len(self.legends), 2):
             names += f' - {self.legends[i - 1]}    {" - " + self.legends[i]}\n'
         if len(self.legends) % 2 != 0:
             names += f' - {self.legends[-1]}\n'

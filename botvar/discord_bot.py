@@ -215,6 +215,6 @@ def run() -> None:
         )
     bot = BotVarBot()
     build_cogs(bot)
-    thread = Thread(target=_player_saver, args=(1,))
+    thread = Thread(target=_player_saver)
     thread.start()
     bot.run(token)
